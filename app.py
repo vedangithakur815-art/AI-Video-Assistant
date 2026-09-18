@@ -1,4 +1,5 @@
 import streamlit as st
+import os
 import time
 from dotenv import load_dotenv
 from utils.audio_processor import process_input
@@ -336,7 +337,26 @@ with st.sidebar:
     st.markdown("---")
 
     st.markdown('<span class="badge badge-purple">Input</span>', unsafe_allow_html=True)
-    source = st.text_input("YouTube URL or File Path", placeholder="https://youtube.com/watch?v=... or /path/to/file.mp4")
+
+    input_mode = st.radio(
+        "Input type",
+        ["YouTube URL", "Upload File"],
+        horizontal=True,
+    )
+
+    source = None
+    uploaded_file = None
+
+    if input_mode == "YouTube URL":
+        source = st.text_input(
+            "YouTube URL",
+            placeholder="https://youtube.com/watch?v=..."
+        )
+    else:
+        uploaded_file = st.file_uploader(
+            "Upload audio/video file",
+            type=["mp3", "wav", "mp4", "m4a", "mov", "mkv"]
+        )
 
     language = st.selectbox("Language", ["english", "hinglish"], index=0)
 
@@ -362,9 +382,18 @@ st.markdown("---")
 
 # ── Run Pipeline ────────────────────────────────────────────────────────────────
 if run_btn:
-    if not source.strip():
-        st.error("Please enter a YouTube URL or file path.")
+    if input_mode == "YouTube URL" and not (source and source.strip()):
+        st.error("Please enter a YouTube URL.")
+    elif input_mode == "Upload File" and uploaded_file is None:
+        st.error("Please upload a file.")
     else:
+        if input_mode == "Upload File":
+            os.makedirs("downloads", exist_ok=True)
+            temp_path = os.path.join("downloads", uploaded_file.name)
+            with open(temp_path, "wb") as f:
+                f.write(uploaded_file.getbuffer())
+            source = temp_path
+
         st.session_state.pipeline_done = False
         st.session_state.result = None
         st.session_state.chat_history = []
